@@ -369,6 +369,16 @@ btnMirror.addEventListener('click', () => {
   }
 });
 
+/**
+ * Spacebar → Play / Pause (only when script is visible).
+ */
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !scriptSection.classList.contains('hidden')) {
+    e.preventDefault();
+    btnPlayPause.click();
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Manual Scroll Sync
 // ---------------------------------------------------------------------------
