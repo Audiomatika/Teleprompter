@@ -3,11 +3,10 @@ Teleprompter Server – Python / FastAPI
 Port of the original Node.js implementation.
 """
 
+import io
 import json
 import os
 import socket
-import shutil
-import uuid
 from pathlib import Path
 
 import docx
@@ -21,8 +20,6 @@ from fastapi.staticfiles import StaticFiles
 # ---------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent
-UPLOADS_DIR = BASE_DIR / "uploads"
-UPLOADS_DIR.mkdir(exist_ok=True)
 
 app = FastAPI()
 
@@ -83,9 +80,9 @@ def get_local_ips() -> list[dict]:
     return addresses
 
 
-def extract_text_from_docx(file_path: Path) -> str:
-    """Extract raw text from a .docx file using python-docx."""
-    document = docx.Document(str(file_path))
+def extract_text_from_docx(file_bytes: bytes) -> str:
+    """Extract raw text from a .docx file using python-docx (in-memory)."""
+    document = docx.Document(io.BytesIO(file_bytes))
     paragraphs = [para.text for para in document.paragraphs]
     return "\n".join(paragraphs)
 
@@ -123,33 +120,15 @@ async def upload_file(script: UploadFile = File(...)):
     and broadcasts the script content to all connected WebSocket clients.
     """
     global current_script
-
     try:
-        # Save uploaded file
-        file_id = uuid.uuid4().hex
-        file_path = UPLOADS_DIR / f"{file_id}_{script.filename}"
-
-        with open(file_path, "wb") as f:
-            content = await script.read()
-            f.write(content)
-
-        # Extract text from docx
-        script_text = extract_text_from_docx(file_path)
-
-        # Store for future connections
+        content = await script.read()
+        script_text = extract_text_from_docx(content)
         current_script = script_text
-
-        # Broadcast the new script to every connected WebSocket client
         await broadcast({"type": "script:loaded", "data": script_text})
-
         return JSONResponse({"success": True, "script": script_text})
-
     except Exception as e:
         print(f"Upload/parse error: {e}")
-        return JSONResponse(
-            {"success": False, "error": str(e)},
-            status_code=500,
-        )
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 
 # ---------------------------------------------------------------------------
