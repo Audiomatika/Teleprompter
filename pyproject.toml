@@ -1,0 +1,14 @@
+[project]
+name = "teleprompter"
+version = "0.1.0"
+description = "Teleprompter System with WebSocket sync"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "python-multipart>=0.0.9",
+    "python-docx>=1.1.0",
+]
+
+[project.scripts]
+teleprompter = "server:main"

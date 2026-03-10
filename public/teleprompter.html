@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Teleprompter — BosePark</title>
+    <link rel="stylesheet" href="/css/styles.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+
+        /* Connection overlay - shown when not connected */
+        .connection-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.95); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
+            color: white; font-family: 'Inter', sans-serif;
+        }
+        .connection-overlay.hidden { display: none; }
+        .connection-overlay .spinner {
+            width: 48px; height: 48px; border: 3px solid rgba(255,255,255,0.15);
+            border-top-color: #00e595; border-radius: 50%;
+            animation: spin 1s linear infinite; margin-bottom: 1.5rem;
+        }
+        .connection-overlay p { font-size: 1rem; color: rgba(255,255,255,0.6); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Waiting for script overlay */
+        .waiting-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 500;
+            color: rgba(255,255,255,0.4); font-family: 'Inter', sans-serif;
+        }
+        .waiting-overlay.hidden { display: none; }
+        .waiting-overlay .icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.5; }
+        .waiting-overlay p { font-size: 1.1rem; }
+
+        /* === Fade gradients at top and bottom === */
+        .fade-top, .fade-bottom {
+            position: fixed; left: 0; right: 0; height: 15vh;
+            pointer-events: none; z-index: 10;
+        }
+        .fade-top {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%);
+        }
+        .fade-bottom {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%);
+        }
+
+
+
+        /* Teleprompter display needs overflow-y auto for scrolling to work */
+        .teleprompter-fullscreen {
+            overflow-y: auto;
+        }
+        .teleprompter-fullscreen .script-text {
+            padding-top: 35vh; /* Start text below the reading line */
+            padding-bottom: 60vh; /* Extra space at bottom so last line can reach reading line */
+            padding-left: 3rem;
+            padding-right: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Connection overlay -->
+    <div class="connection-overlay" id="connectionOverlay">
+        <div class="spinner"></div>
+        <p id="connectionStatus">Verbinde mit Server...</p>
+        <p id="connectionDetail" style="font-size: 0.75rem; color: rgba(255,255,255,0.35); margin-top: 0.75rem; max-width: 80%; text-align: center; word-break: break-all;"></p>
+    </div>
+
+    <!-- Waiting for script -->
+    <div class="waiting-overlay" id="waitingOverlay">
+        <div class="icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+        </div>
+        <p>Warte auf Skript vom Controller...</p>
+    </div>
+
+    <!-- Fade gradients -->
+    <div class="fade-top"></div>
+    <div class="fade-bottom"></div>
+
+
+    <!-- Main teleprompter display -->
+    <div class="teleprompter-fullscreen" id="teleprompterDisplay">
+        <div class="script-text" id="scriptText"></div>
+    </div>
+
+
+    <script src="/js/teleprompter.js"></script>
+</body>
+</html>

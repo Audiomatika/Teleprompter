@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teleprompter — BosePark Productions</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: #012827;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 860px;
+      width: 100%;
+    }
+
+    .logo {
+      margin-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3.5rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .brand-badge {
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      font-weight: 300;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 3rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      margin-bottom: 4rem;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      padding: 3.5rem 2.5rem;
+      background: #064e4a;
+      border: 1px solid rgba(0,229,149,0.15);
+      border-radius: 24px;
+      text-decoration: none;
+      color: #ffffff;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: #00e595;
+      box-shadow: 0 8px 32px rgba(0,229,149,0.15), 0 0 0 1px rgba(0,229,149,0.3);
+    }
+
+    .card:active {
+      transform: translateY(-1px);
+    }
+
+    .card-icon {
+      font-size: 2.5rem;
+      width: 72px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,229,149,0.12);
+      border-radius: 18px;
+      color: #00e595;
+    }
+
+    .card-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .card-subtitle {
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: rgba(255,255,255,0.45);
+    }
+
+    .footer {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.25);
+    }
+
+    .footer-copyright {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.25);
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 600px) {
+      .cards { grid-template-columns: 1fr; gap: 1.5rem; }
+      .card { padding: 2.5rem 1.5rem; }
+      h1 { font-size: 2.2rem; }
+    }
+
+    .qr-section {
+      margin: 3rem 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      padding-top: 3rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .qr-section .qr-label {
+      font-size: 0.95rem;
+      font-weight: 400;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .qr-wrapper {
+      background: #064e4a;
+      border: 1px solid rgba(0,229,149,0.15);
+      padding: 20px;
+      border-radius: 20px;
+      display: inline-block;
+      line-height: 0;
+    }
+
+    .qr-url {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.4);
+      font-family: 'Courier New', monospace;
+      user-select: all;
+    }
+
+    .qr-section.loading .qr-wrapper,
+    .qr-section.error .qr-wrapper {
+      display: none;
+    }
+
+    .qr-error {
+      font-size: 0.85rem;
+      color: #ff4d6d;
+      opacity: 0.7;
+      display: none;
+    }
+
+    .qr-section.error .qr-error {
+      display: block;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Teleprompter</h1>
+    <p class="brand-badge">BosePark Productions</p>
+
+    <div class="cards">
+      <a href="/controller.html" class="card" onclick="sessionStorage.setItem('controller_nav', '1')">
+        <div class="card-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00e595" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"/>
+            <line x1="4" y1="10" x2="4" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12" y2="3"/>
+            <line x1="20" y1="21" x2="20" y2="16"/>
+            <line x1="20" y1="12" x2="20" y2="3"/>
+            <line x1="1" y1="14" x2="7" y2="14"/>
+            <line x1="9" y1="8" x2="15" y2="8"/>
+            <line x1="17" y1="16" x2="23" y2="16"/>
+          </svg>
+        </div>
+        <span class="card-title">Controller</span>
+      </a>
+      <a href="/teleprompter.html" class="card">
+        <div class="card-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00e595" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+        </div>
+        <span class="card-title">Teleprompter</span>
+      </a>
+    </div>
+
+    <div class="qr-section loading" id="qr-section">
+      <div class="qr-wrapper" id="qr-wrapper"></div>
+      <span class="qr-url" id="qr-url">Lade...</span>
+      <span class="qr-error">QR-Code konnte nicht geladen werden</span>
+    </div>
+
+    <p class="footer-copyright">&copy; BosePark Productions GmbH</p>
+  </div>
+  <script>
+    (async function() {
+      const section = document.getElementById('qr-section');
+      const urlEl = document.getElementById('qr-url');
+      try {
+        const res = await fetch('/api/server-url');
+        const data = await res.json();
+        const url = data.url;
+        const baseUrl = url.replace('/teleprompter.html', '');
+        
+        new QRCode(document.getElementById('qr-wrapper'), {
+          text: url,
+          width: 200,
+          height: 200,
+          colorDark: '#ffffff',
+          colorLight: '#00000000',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+        
+        urlEl.textContent = baseUrl;
+        section.classList.remove('loading');
+      } catch (e) {
+        console.error('Failed to load server URL:', e);
+        section.classList.remove('loading');
+        section.classList.add('error');
+      }
+    })();
+  </script>
+</body>
+</html>
