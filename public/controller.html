@@ -160,20 +160,55 @@
         .script-section {
             padding: 0.75rem 1rem;
             padding-bottom: 110px;
+            /* keep existing */
         }
 
-        .script-section .script-container {
-            height: calc(100vh - 180px);
-            overflow-y: auto;
-            background: #000000;
+        /* ===== Scaled Preview ===== */
+        .preview-outer {
+            width: 100%;
+            /* height is set dynamically by JS */
+            overflow: hidden;
             border-radius: 14px;
             border: 1px solid rgba(0, 229, 149, 0.08);
+            background: #000;
+            position: relative;
         }
 
-        .script-section .script-text {
-            padding: 1.5rem;
-            font-size: 1.15rem;
-            line-height: 1.7;
+        .preview-inner {
+            /* width/height and transform are set dynamically by JS */
+            transform-origin: top left;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+        }
+
+        /* The livePreview inside preview-inner fills the teleprompter dimensions */
+        .preview-inner .script-container {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            background: #000;
+            border-radius: 0;
+            border: none;
+            /* hide scrollbar visually — JS drives the scroll position */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .preview-inner .script-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .preview-inner .script-text {
+            /* font-size set by JS; padding matches teleprompter exactly */
+            padding-top: 35vh;   /* will be overridden in JS using teleprompter px values */
+            padding-bottom: 60vh;
+            padding-left: 3rem;
+            padding-right: 3rem;
+            line-height: 1.6;
+            color: #fff;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
 
         /* ===== Controls Panel ===== */
@@ -324,15 +359,8 @@
                 padding-bottom: 100px;
             }
 
-            .script-section .script-container {
-                height: calc(100vh - 160px);
+            .preview-outer {
                 border-radius: 10px;
-            }
-
-            .script-section .script-text {
-                padding: 1rem;
-                font-size: 1rem;
-                line-height: 1.6;
             }
 
             .controls-panel {
@@ -491,8 +519,12 @@
 
         <!-- Script View Section -->
         <section class="script-section hidden" id="scriptSection">
-            <div class="script-container" id="livePreview">
-                <div class="script-text" id="scriptText"></div>
+            <div class="preview-outer" id="previewOuter">
+                <div class="preview-inner" id="previewInner">
+                    <div class="script-container" id="livePreview">
+                        <div class="script-text" id="scriptText"></div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -562,6 +594,6 @@
 
     </div>
 
-    <script src="/js/controller.js?v=2"></script>
+    <script src="/js/controller.js?v=3"></script>
 </body>
 </html>
