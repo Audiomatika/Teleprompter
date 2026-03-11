@@ -42,6 +42,9 @@ const SCROLL_THROTTLE_MS = 60;
 let lastScrollSendTime = 0;
 let isProgrammaticScroll = false;
 
+/** Set to true on teleprompter connect; cleared after the first viewport_info sync. */
+let syncScrollOnNextViewportInfo = false;
+
 // Font size: Prozent-Skala
 const FONTSIZE_MIN  = 60;
 const FONTSIZE_MAX  = 200;
@@ -201,6 +204,7 @@ function handleMessage(msg) {
       statusDot.classList.remove('disconnected');
       statusDot.classList.add('connected');
       statusText.textContent = 'Teleprompter verbunden';
+      syncScrollOnNextViewportInfo = true;
       console.log('[Controller] Teleprompter connected');
       break;
 
@@ -216,13 +220,16 @@ function handleMessage(msg) {
       const vw = msg.data && msg.data.viewportWidth;
       const vh = msg.data && msg.data.viewportHeight;
       if (vw && vh && vw > 0 && vh > 0) {
-        teleprompterWidth  = vw;
-        teleprompterHeight = vh;
-        updatePreviewScale();
+        if (vw !== teleprompterWidth || vh !== teleprompterHeight) {
+          teleprompterWidth  = vw;
+          teleprompterHeight = vh;
+          updatePreviewScale();
+        }
       }
-      // Sync scroll position from viewport info — only when paused to avoid
-      // fighting the rAF auto-scroll loop while playing
-      if (!isPlaying && msg.data && typeof msg.data.scrollPercent === 'number') {
+      // One-shot sync: align preview to teleprompter position immediately after connect.
+      // After that first sync the controller is the authority — we never override again.
+      if (syncScrollOnNextViewportInfo && msg.data && typeof msg.data.scrollPercent === 'number') {
+        syncScrollOnNextViewportInfo = false;
         const maxScroll = livePreview.scrollHeight - livePreview.clientHeight;
         if (maxScroll > 0) {
           isProgrammaticScroll = true;
