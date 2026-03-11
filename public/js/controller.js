@@ -20,13 +20,6 @@ let teleprompterConnected = false;
 /** Animation frame ID for the live-preview auto-scroll loop */
 let autoScrollFrameId = null;
 
-/** Flag to suppress manual scroll-sync while we programmatically scroll */
-let isProgrammaticScroll = false;
-
-/** Throttle timestamp for manual scroll events */
-let lastScrollSendTime = 0;
-const SCROLL_THROTTLE_MS = 60;
-
 /** Reconnect timer ID */
 let reconnectInterval = null;
 
@@ -42,12 +35,25 @@ const SPEED_MIN = 0.1;
 const SPEED_MAX = 8.0;
 const SPEED_STEP = 0.1;
 let scrollSpeed = 1.5; // default: 1.5 (normales Sprechtempo)
+let previewScrollPosition = 0; // float accumulator — preserves sub-pixel scroll precision
+
+// Scroll sync throttle
+const SCROLL_THROTTLE_MS = 60;
+let lastScrollSendTime = 0;
+let isProgrammaticScroll = false;
 
 // Font size: Prozent-Skala
 const FONTSIZE_MIN  = 60;
 const FONTSIZE_MAX  = 200;
 const FONTSIZE_STEP = 10;
 let fontSize = 100; // default: 100%
+
+// Teleprompter viewport dimensions (updated via status:viewport_info)
+let teleprompterWidth = 768;   // default: iPad portrait width
+let teleprompterHeight = 1024; // default: iPad portrait height
+
+// Current scale factor applied to preview-inner
+let previewScale = 1;
 
 // ---------------------------------------------------------------------------
 // DOM References
@@ -73,6 +79,8 @@ const speedDisplay    = document.getElementById('speedDisplay');
 const btnFontDown    = document.getElementById('btnFontDown');
 const btnFontUp      = document.getElementById('btnFontUp');
 const fontsizeDisplay = document.getElementById('fontsizeDisplay');
+const previewOuter     = document.getElementById('previewOuter');
+const previewInner     = document.getElementById('previewInner');
 
 // ---------------------------------------------------------------------------
 // WebSocket Connection
@@ -204,6 +212,28 @@ function handleMessage(msg) {
       console.log('[Controller] Teleprompter disconnected');
       break;
 
+    case 'status:viewport_info': {
+      const vw = msg.data && msg.data.viewportWidth;
+      const vh = msg.data && msg.data.viewportHeight;
+      if (vw && vh && vw > 0 && vh > 0) {
+        teleprompterWidth  = vw;
+        teleprompterHeight = vh;
+        updatePreviewScale();
+      }
+      // Sync scroll position from viewport info — only when paused to avoid
+      // fighting the rAF auto-scroll loop while playing
+      if (!isPlaying && msg.data && typeof msg.data.scrollPercent === 'number') {
+        const maxScroll = livePreview.scrollHeight - livePreview.clientHeight;
+        if (maxScroll > 0) {
+          isProgrammaticScroll = true;
+          previewScrollPosition = (msg.data.scrollPercent / 100) * maxScroll;
+          livePreview.scrollTop = Math.round(previewScrollPosition);
+          isProgrammaticScroll = false;
+        }
+      }
+      break;
+    }
+
     default:
       console.log('[Controller] Unknown message type:', msg.type);
   }
@@ -233,8 +263,12 @@ function handleScriptLoaded(data) {
 
   // Reset scroll to top
   isProgrammaticScroll = true;
+  previewScrollPosition = 0;
   livePreview.scrollTop = 0;
-  requestAnimationFrame(() => { isProgrammaticScroll = false; });
+  isProgrammaticScroll = false;
+
+  // Apply scaled preview layout
+  updatePreviewScale();
 
   console.log('[Controller] Script loaded and displayed');
 }
@@ -368,8 +402,9 @@ btnScrollTop.addEventListener('click', () => {
   }
 
   isProgrammaticScroll = true;
+  previewScrollPosition = 0;
   livePreview.scrollTop = 0;
-  requestAnimationFrame(() => { isProgrammaticScroll = false; });
+  isProgrammaticScroll = false;
 
   sendMessage({ type: 'control:scroll', data: { scrollPercent: 0 } });
 });
@@ -379,8 +414,9 @@ btnScrollTop.addEventListener('click', () => {
  */
 btnScrollBottom.addEventListener('click', () => {
   isProgrammaticScroll = true;
-  livePreview.scrollTop = livePreview.scrollHeight - livePreview.clientHeight;
-  requestAnimationFrame(() => { isProgrammaticScroll = false; });
+  previewScrollPosition = livePreview.scrollHeight - livePreview.clientHeight;
+  livePreview.scrollTop = previewScrollPosition;
+  isProgrammaticScroll = false;
 
   sendMessage({ type: 'control:scroll', data: { scrollPercent: 100 } });
 });
@@ -456,12 +492,67 @@ btnSpeedUp.addEventListener('click', () => {
 
 /**
  * Update font size display, apply to live preview, and notify teleprompter.
+ * The preview renders at the same absolute px as the teleprompter; the
+ * container itself is CSS-scaled to fit the available space.
  */
 function applyFontSize() {
   fontsizeDisplay.textContent = fontSize + '%';
-  // Apply to live preview script text
-  scriptText.style.fontSize = (fontSize / 100) * 1.15 + 'rem';
+  const TELEPROMPTER_BASE_PX = 56;
+  const scaledPx = (fontSize / 100) * TELEPROMPTER_BASE_PX;
+  scriptText.style.fontSize = Math.max(scaledPx, 8) + 'px';
+  scriptText.style.lineHeight = '1.6';
   sendMessage({ type: 'control:fontsize', data: { fontSize } });
+}
+
+/**
+ * Recalculate and apply the CSS scale transform so that preview-inner
+ * (which has real teleprompter dimensions) fits inside preview-outer.
+ * Also sizes preview-outer height to maintain the teleprompter aspect ratio,
+ * and updates the script-text padding to match the teleprompter exactly.
+ */
+function updatePreviewScale() {
+  if (!previewOuter || !previewInner) return;
+
+  // Constrain the preview to the teleprompter's portrait aspect ratio.
+  // Compute the ideal width that fills the available vertical space.
+  const HEADER_H   = 64;   // fixed header height
+  const CONTROLS_H = 95;   // fixed bottom controls bar height
+  const SECTION_PAD = 24;  // top padding of .script-section
+  const availableH = window.innerHeight - HEADER_H - CONTROLS_H - SECTION_PAD;
+
+  const aspectRatio = teleprompterWidth / teleprompterHeight; // e.g. 768/1024 = 0.75
+  const idealWidth  = Math.round(availableH * aspectRatio);
+
+  // Cap to idealWidth (preserves aspect ratio); never smaller than 100px
+  const outerWidth = Math.max(idealWidth, 100);
+
+  // Apply constrained width and centre horizontally
+  previewOuter.style.width  = outerWidth + 'px';
+  previewOuter.style.margin = '0 auto';
+
+  // Scale factor: fit the teleprompter width into the constrained outer width
+  previewScale = outerWidth / teleprompterWidth;
+
+  // Set outer height to match the scaled teleprompter aspect ratio
+  const scaledHeight = teleprompterHeight * previewScale;
+  previewOuter.style.height = scaledHeight + 'px';
+
+  // Apply scale transform to inner container
+  previewInner.style.width  = teleprompterWidth  + 'px';
+  previewInner.style.height = teleprompterHeight + 'px';
+  previewInner.style.transform = `scale(${previewScale})`;
+  previewInner.style.transformOrigin = 'top left';
+
+  // Match teleprompter padding exactly (35vh and 60vh of the teleprompter viewport)
+  const paddingTop    = teleprompterHeight * 0.35;
+  const paddingBottom = teleprompterHeight * 0.60;
+  scriptText.style.paddingTop    = paddingTop    + 'px';
+  scriptText.style.paddingBottom = paddingBottom + 'px';
+  scriptText.style.paddingLeft   = '48px';
+  scriptText.style.paddingRight  = '48px';
+
+  // Re-apply font size so it stays consistent after scale recalculation
+  applyFontSize();
 }
 
 /**
@@ -499,11 +590,10 @@ document.addEventListener('keydown', (e) => {
 // ---------------------------------------------------------------------------
 
 /**
- * When the user manually scrolls the live preview, sync the scroll position
- * to the teleprompter. Throttled to avoid flooding the WebSocket.
+ * When the user manually scrolls the live preview, sync position to teleprompter.
+ * Throttled to avoid flooding the WebSocket.
  */
 livePreview.addEventListener('scroll', () => {
-  // Ignore programmatic scrolls (auto-scroll or button-triggered)
   if (isProgrammaticScroll) return;
 
   const now = Date.now();
@@ -522,11 +612,10 @@ livePreview.addEventListener('scroll', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * Start auto-scrolling the live preview at SCROLL_SPEED pixels per frame.
- * Mirrors what the teleprompter does, giving the controller a true live view.
+ * Start auto-scrolling the live preview at scrollSpeed pixels per frame.
  */
 function startAutoScroll() {
-  stopAutoScroll(); // Cancel any existing animation
+  stopAutoScroll();
 
   function tick() {
     if (!isPlaying) return;
@@ -534,13 +623,14 @@ function startAutoScroll() {
     const maxScroll = livePreview.scrollHeight - livePreview.clientHeight;
 
     isProgrammaticScroll = true;
-    livePreview.scrollTop += scrollSpeed;
-    requestAnimationFrame(() => { isProgrammaticScroll = false; });
+    previewScrollPosition += scrollSpeed;
+    livePreview.scrollTop = Math.round(previewScrollPosition);
+    isProgrammaticScroll = false;
 
-    // Stop when we reach the bottom
-    if (livePreview.scrollTop >= maxScroll) {
+    if (maxScroll > 0 && previewScrollPosition >= maxScroll) {
       isPlaying = false;
       btnPlayPause.textContent = 'Play';
+      stopAutoScroll();
       sendMessage({ type: 'control:pause' });
       return;
     }
@@ -566,3 +656,7 @@ function stopAutoScroll() {
 // ---------------------------------------------------------------------------
 
 connect();
+window.addEventListener('resize', () => {
+  applyFontSize();
+  updatePreviewScale();
+});
