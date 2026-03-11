@@ -90,6 +90,7 @@ exe = EXE(
     # windowed=True hides the terminal window on Windows.
     # Set to False temporarily if you need to see startup errors.
     console=False,
+    # console=True,  # Uncomment this (and comment above) to show terminal for debugging
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

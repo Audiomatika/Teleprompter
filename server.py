@@ -325,8 +325,16 @@ app.mount(
 # ---------------------------------------------------------------------------
 
 
-def main():
+def main() -> None:
     """Entry point for the teleprompter server."""
+    # When packaged with PyInstaller (windowed/noconsole), sys.stdout and
+    # sys.stderr are None. Redirect them to a no-op buffer so that uvicorn's
+    # logging setup (which calls sys.stdout.isatty()) does not crash.
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w")  # noqa: WPS515
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w")  # noqa: WPS515
+
     print("=========================================")
     print(" Teleprompter Server")
     print("=========================================")
@@ -354,7 +362,7 @@ def main():
         app,
         host="0.0.0.0",
         port=PORT,
-        log_level="info",
+        log_level="warning",
         ws_ping_interval=20,
         ws_ping_timeout=30,
     )
