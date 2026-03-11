@@ -20,6 +20,7 @@
 let isPlaying = false;
 let isMirrored = false;
 let scrollSpeed = 1.5;        // pixels per frame (decimal scale), will be updated by controller
+let scrollPosition = 0;   // float accumulator — preserves sub-pixel scroll precision
 let fontSize = 56;            // in px, will be updated by controller
 let animationFrameId = null;
 let scriptLoaded = false;
@@ -305,6 +306,7 @@ function handleScriptLoaded(data) {
 
     // Reset scroll position to top
     teleprompterDisplay.scrollTop = 0;
+    scrollPosition = 0;
 
     // Show scroll indicator
     if (scrollIndicator) scrollIndicator.style.display = '';
@@ -367,8 +369,10 @@ function handleScroll(data) {
     // Use smooth scrolling for manual jumps (not during auto-scroll)
     if (!isPlaying) {
         teleprompterDisplay.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+        scrollPosition = targetScrollTop;
     } else {
         teleprompterDisplay.scrollTop = targetScrollTop;
+        scrollPosition = targetScrollTop;
     }
 
     // Update indicator
@@ -413,7 +417,8 @@ function handleFontSize(data) {
 /**
  * Start periodically sending viewport info to the server (which forwards
  * it to controllers). This tells the controller what portion of the text
- * is currently visible and how far the user has scrolled.
+ * is currently visible, how far the user has scrolled, and the exact pixel
+ * dimensions of the teleprompter screen (viewportWidth, viewportHeight).
  *
  * Reports 5 times per second (every 200ms).
  */
@@ -431,7 +436,12 @@ function startViewportReporting() {
 
         ws.send(JSON.stringify({
             type: 'status:viewport_info',
-            data: { scrollPercent, viewportRatio }
+            data: {
+                scrollPercent,
+                viewportRatio,
+                viewportWidth: window.innerWidth,
+                viewportHeight: window.innerHeight,
+            }
         }));
     }, 200); // Report 5 times per second
 }
@@ -476,7 +486,8 @@ function startAutoScroll() {
         if (!isPlaying) return;
 
         const container = teleprompterDisplay;
-        container.scrollTop += scrollSpeed;
+        scrollPosition += scrollSpeed;
+        container.scrollTop = Math.round(scrollPosition);
 
         // Calculate current scroll percentage
         const maxScroll = container.scrollHeight - container.clientHeight;
@@ -486,7 +497,7 @@ function startAutoScroll() {
         if (scrollIndicator) scrollIndicator.textContent = percent + '%';
 
         // Stop when we reach the bottom
-        if (container.scrollTop >= maxScroll) {
+        if (maxScroll > 0 && scrollPosition >= maxScroll) {
             isPlaying = false;
 
             // Update status indicator to paused
