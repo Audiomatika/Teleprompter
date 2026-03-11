@@ -501,7 +501,7 @@ function applyFontSize() {
   const scaledPx = (fontSize / 100) * TELEPROMPTER_BASE_PX;
   scriptText.style.fontSize = Math.max(scaledPx, 8) + 'px';
   scriptText.style.lineHeight = '1.6';
-  sendMessage({ type: 'control:fontsize', data: { fontSize } });
+  sendMessage({ type: 'control:fontsize', data: { fontSize: Math.max(scaledPx, 8) } });
 }
 
 /**
