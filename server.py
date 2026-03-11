@@ -248,6 +248,23 @@ async def websocket_endpoint(ws: WebSocket):
 # NOTE: This must be mounted AFTER all API/WebSocket routes
 # ---------------------------------------------------------------------------
 
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class NoCacheJSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.endswith(".js"):
+            response.headers["Cache-Control"] = (
+                "no-store, no-cache, must-revalidate, max-age=0"
+            )
+            response.headers["Pragma"] = "no-cache"
+        return response
+
+
+app.add_middleware(NoCacheJSMiddleware)
+
 app.mount(
     "/", StaticFiles(directory=str(BASE_DIR / "public"), html=True), name="static"
 )

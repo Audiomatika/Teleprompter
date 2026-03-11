@@ -33,7 +33,7 @@ let reconnectInterval = null;
 // Scroll speed: pixels per requestAnimationFrame tick
 // Dezimalskala wie professionelle Teleprompter-Software (Autocue, Parrot etc.)
 // 0.1 = sehr langsam, 1.5 = normales Sprechtempo, 3.0+ = schnell
-// Schrittweite: 0.1, Bereich: 1.0–8.0
+// Schrittweite: 0.1, Bereich: 0.1–8.0
 const SPEED_MIN = 0.1;
 const SPEED_MAX = 8.0;
 const SPEED_STEP = 0.1;
@@ -406,8 +406,9 @@ function applySpeed() {
  * Speed Down – verringert die Scrollgeschwindigkeit um 0.1.
  */
 btnSpeedDown.addEventListener('click', () => {
-  if (scrollSpeed > SPEED_MIN) {
-    scrollSpeed = roundSpeed(scrollSpeed - SPEED_STEP);
+  const next = roundSpeed(scrollSpeed - SPEED_STEP);
+  if (next >= SPEED_MIN) {
+    scrollSpeed = next;
     applySpeed();
   }
 });
@@ -416,8 +417,9 @@ btnSpeedDown.addEventListener('click', () => {
  * Speed Up – erhöht die Scrollgeschwindigkeit um 0.1.
  */
 btnSpeedUp.addEventListener('click', () => {
-  if (scrollSpeed < SPEED_MAX) {
-    scrollSpeed = roundSpeed(scrollSpeed + SPEED_STEP);
+  const next = roundSpeed(scrollSpeed + SPEED_STEP);
+  if (next <= SPEED_MAX) {
+    scrollSpeed = next;
     applySpeed();
   }
 });
