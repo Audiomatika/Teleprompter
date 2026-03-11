@@ -62,18 +62,44 @@ async def send_to_role(role: str, obj: dict) -> None:
 
 
 def get_local_ips() -> list[dict]:
-    """Detect and return all local network IPv4 addresses."""
-    addresses = []
+    """Detect and return all local network IPv4 addresses.
 
-    # Simple cross-platform approach: connect a UDP socket to determine local IP
+    Returns a list of dicts with keys "name" and "address". The primary IP
+    (determined via UDP socket trick) is listed first, followed by any
+    additional addresses discovered via getaddrinfo. Loopback (127.x.x.x)
+    and link-local (169.254.x.x) addresses are excluded.
+    """
+    addresses: list[dict] = []
+    seen: set[str] = set()
+
+    def _add(name: str, addr: str) -> None:
+        """Add an address if it hasn't been seen and isn't filtered."""
+        if addr in seen:
+            return
+        if addr.startswith("127.") or addr.startswith("169.254."):
+            return
+        seen.add(addr)
+        addresses.append({"name": name, "address": addr})
+
+    # 1. UDP socket trick — reveals the "primary" outbound interface IP.
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # Doesn't actually send anything - just determines the local IP
+        # Doesn't actually send anything; just determines the routing IP.
         s.connect(("8.8.8.8", 80))
-        addr = s.getsockname()[0]
+        primary_addr = s.getsockname()[0]
         s.close()
-        if addr and not addr.startswith("127."):
-            addresses.append({"name": "default", "address": addr})
+        _add("primary", primary_addr)
+    except Exception:
+        pass
+
+    # 2. getaddrinfo — collects all IPv4 addresses bound to all interfaces.
+    try:
+        results = socket.getaddrinfo(socket.gethostname(), None)
+        for item in results:
+            family, _type, _proto, _canonname, sockaddr = item
+            if family == socket.AF_INET:
+                addr = str(sockaddr[0])
+                _add("network", addr)
     except Exception:
         pass
 
@@ -99,13 +125,25 @@ async def ping():
 
 @app.get("/api/server-url")
 async def server_url():
-    """Return the server's LAN URL for QR code generation."""
+    """Return the server's LAN URL(s) for QR code generation.
+
+    Returns a "primary" string for backward compatibility and a "urls" list
+    with one entry per detected network interface.
+    """
     ips = get_local_ips()
     if ips:
-        url = f"http://{ips[0]['address']}:{PORT}/teleprompter.html"
+        urls = [
+            {
+                "label": ip["name"],
+                "url": f"http://{ip['address']}:{PORT}/teleprompter.html",
+            }
+            for ip in ips
+        ]
+        primary = urls[0]["url"]
     else:
-        url = f"http://localhost:{PORT}/teleprompter.html"
-    return {"url": url}
+        primary = f"http://localhost:{PORT}/teleprompter.html"
+        urls = [{"label": "localhost", "url": primary}]
+    return {"primary": primary, "urls": urls}
 
 
 # ---------------------------------------------------------------------------

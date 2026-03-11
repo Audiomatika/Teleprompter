@@ -178,6 +178,37 @@
     .qr-section.error .qr-error {
       display: block;
     }
+
+    .qr-alt-list {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .qr-alt-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 0.75rem;
+    }
+
+    .qr-alt-link {
+      font-size: 0.8rem;
+      color: #00e595;
+      font-family: 'Courier New', monospace;
+      text-decoration: none;
+      opacity: 0.75;
+      transition: opacity 0.2s ease;
+      cursor: pointer;
+    }
+
+    .qr-alt-link:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -219,6 +250,7 @@
       <div class="qr-wrapper" id="qr-wrapper"></div>
       <span class="qr-url" id="qr-url">Lade...</span>
       <span class="qr-error">QR-Code konnte nicht geladen werden</span>
+      <div class="qr-alt-list" id="qr-alt-list" style="display:none;"></div>
     </div>
 
     <p class="footer-copyright">&copy; BosePark Productions GmbH</p>
@@ -227,23 +259,47 @@
     (async function() {
       const section = document.getElementById('qr-section');
       const urlEl = document.getElementById('qr-url');
+      const altList = document.getElementById('qr-alt-list');
       try {
         const res = await fetch('/api/server-url');
         const data = await res.json();
-        const url = data.url;
-        const baseUrl = url.replace('/teleprompter.html', '');
-        
+        const primaryUrl = data.primary;
+        const allUrls = data.urls || [{ label: 'primary', url: primaryUrl }];
+        const baseUrl = primaryUrl.replace('/teleprompter.html', '');
+
         new QRCode(document.getElementById('qr-wrapper'), {
-          text: url,
+          text: primaryUrl,
           width: 200,
           height: 200,
           colorDark: '#ffffff',
           colorLight: '#00000000',
           correctLevel: QRCode.CorrectLevel.M
         });
-        
+
         urlEl.textContent = baseUrl;
         section.classList.remove('loading');
+
+        // Show alternate IPs if more than one was found
+        const alternates = allUrls.slice(1);
+        if (alternates.length > 0) {
+          const labelEl = document.createElement('span');
+          labelEl.className = 'qr-alt-label';
+          labelEl.textContent = 'Weitere Adressen';
+          altList.appendChild(labelEl);
+
+          alternates.forEach(function(entry) {
+            const altBase = entry.url.replace('/teleprompter.html', '');
+            const link = document.createElement('a');
+            link.className = 'qr-alt-link';
+            link.href = entry.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = altBase;
+            altList.appendChild(link);
+          });
+
+          altList.style.display = 'flex';
+        }
       } catch (e) {
         console.error('Failed to load server URL:', e);
         section.classList.remove('loading');
