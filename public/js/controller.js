@@ -603,6 +603,11 @@ document.addEventListener('keydown', (e) => {
 livePreview.addEventListener('scroll', () => {
   if (isProgrammaticScroll) return;
 
+  // Always keep the accumulator in sync with the actual DOM scroll position so
+  // that startAutoScroll() continues from exactly where the user scrolled to,
+  // not from the last programmatic position. Must be before the throttle gate.
+  previewScrollPosition = livePreview.scrollTop;
+
   const now = Date.now();
   if (now - lastScrollSendTime < SCROLL_THROTTLE_MS) return;
   lastScrollSendTime = now;
