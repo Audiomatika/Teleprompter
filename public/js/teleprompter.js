@@ -32,6 +32,10 @@ let wsConnectTimeout = null;
 // For viewport info reporting
 let viewportReportInterval = null;
 
+// Application-level heartbeat to keep the connection alive on iOS
+let heartbeatInterval = null;
+const HEARTBEAT_INTERVAL_MS = 15000;
+
 // ---------------------------------------------------------------------------
 // DOM references
 // ---------------------------------------------------------------------------
@@ -147,6 +151,7 @@ async function connect() {
         isConnecting = false;
         if (wsConnectTimeout) { clearTimeout(wsConnectTimeout); wsConnectTimeout = null; }
         reconnectAttempts = 0;
+        startHeartbeat();
 
         // Hide connection overlay
         connectionOverlay.classList.add('hidden');
@@ -201,6 +206,9 @@ function onDisconnect() {
     // Stop any running scroll
     stopAutoScroll();
     isPlaying = false;
+
+    // Stop heartbeat
+    stopHeartbeat();
 
     // Stop viewport reporting
     if (viewportReportInterval) {
@@ -426,6 +434,29 @@ function startViewportReporting() {
             data: { scrollPercent, viewportRatio }
         }));
     }, 200); // Report 5 times per second
+}
+
+/**
+ * Send a lightweight ping message every 15 seconds to prevent iOS Safari
+ * from killing idle WebSocket connections (error code 1006).
+ */
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatInterval = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+/**
+ * Stop the heartbeat interval.
+ */
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
 }
 
 // ---------------------------------------------------------------------------

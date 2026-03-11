@@ -30,6 +30,10 @@ const SCROLL_THROTTLE_MS = 60;
 /** Reconnect timer ID */
 let reconnectInterval = null;
 
+/** Heartbeat timer to keep WebSocket alive */
+let heartbeatInterval = null;
+const HEARTBEAT_INTERVAL_MS = 15000;
+
 // Scroll speed: pixels per requestAnimationFrame tick
 // Dezimalskala wie professionelle Teleprompter-Software (Autocue, Parrot etc.)
 // 0.1 = sehr langsam, 1.5 = normales Sprechtempo, 3.0+ = schnell
@@ -92,6 +96,9 @@ function connect() {
       reconnectInterval = null;
     }
 
+    // Start heartbeat
+    startHeartbeat();
+
     // Register as controller
     ws.send(JSON.stringify({
       type: 'register',
@@ -111,6 +118,7 @@ function connect() {
   ws.addEventListener('close', () => {
     console.warn('[Controller] Connection closed');
     isConnected = false;
+    stopHeartbeat();
     teleprompterConnected = false;
     statusDot.classList.remove('connected');
     statusDot.classList.add('disconnected');
@@ -142,6 +150,28 @@ function scheduleReconnect() {
 function sendMessage(obj) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(obj));
+  }
+}
+
+/**
+ * Send a lightweight ping every 15 seconds to keep the WebSocket alive.
+ */
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatInterval = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'ping' }));
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+/**
+ * Stop the heartbeat interval.
+ */
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
   }
 }
 

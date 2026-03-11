@@ -224,6 +224,9 @@ async def websocket_endpoint(ws: WebSocket):
                     "controller", {"type": "status:viewport_info", "data": data}
                 )
 
+            elif msg_type == "ping":
+                # Application-level heartbeat from client — no response needed
+                pass
             else:
                 print(f'[WS] Unknown message type: "{msg_type}"')
 
@@ -292,7 +295,14 @@ def main():
     print("=========================================")
     print("Open the URL above on your iPad or any device on the same network.")
 
-    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=PORT,
+        log_level="info",
+        ws_ping_interval=20,
+        ws_ping_timeout=30,
+    )
 
 
 if __name__ == "__main__":
