@@ -208,6 +208,16 @@ async def websocket_endpoint(ws: WebSocket):
                     "teleprompter", {"type": "control:mirror", "data": data}
                 )
 
+            elif msg_type == "control:speed":
+                await send_to_role(
+                    "teleprompter", {"type": "control:speed", "data": data}
+                )
+
+            elif msg_type == "control:fontsize":
+                await send_to_role(
+                    "teleprompter", {"type": "control:fontsize", "data": data}
+                )
+
             # ----- Status updates (forwarded to controllers) -------------------
             elif msg_type == "status:viewport_info":
                 await send_to_role(

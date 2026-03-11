@@ -190,6 +190,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 0;
             z-index: 100;
             border-top: 1px solid var(--border);
         }
@@ -356,6 +357,91 @@
                 border-radius: 12px;
             }
         }
+        /* ===== Speed Control ===== */
+        /* Edge-Buttons: absolut positioniert, stören den Flex-Fluss nicht */
+        .btn-edge {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 2;
+        }
+        .btn-edge-left  { left:  1.25rem; }
+        .btn-edge-right { right: 1.25rem; }
+
+        /* Drei gleiche Flex-Sektionen */
+        .controls-speed-section,
+        .controls-fontsize-section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        /* Speed-Buttons: volle ctrl-btn Optik, etwas kleiner */
+        .speed-btn {
+            width: 44px !important;
+            height: 44px !important;
+        }
+
+        .speed-display {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--accent);
+            min-width: 2.6rem;
+            text-align: center;
+            user-select: none;
+        }
+
+        .fontsize-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .fontsize-btn {
+            width: 44px !important;
+            height: 44px !important;
+        }
+
+        .fontsize-display {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--accent);
+            min-width: 2.6rem;
+            text-align: center;
+            user-select: none;
+        }
+
+        @media (max-width: 480px) {
+            .btn-edge-left  { left:  0.75rem; }
+            .btn-edge-right { right: 0.75rem; }
+            .speed-btn {
+                width: 40px !important;
+                height: 40px !important;
+            }
+            .speed-display {
+                font-size: 0.85rem;
+                min-width: 2.2rem;
+            }
+            .fontsize-btn {
+                width: 40px !important;
+                height: 40px !important;
+            }
+            .fontsize-display {
+                font-size: 0.85rem;
+                min-width: 2.2rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -413,14 +499,29 @@
 
     <!-- Bottom Control Bar -->
     <div class="controls-panel hidden" id="controlsPanel">
-        <div class="controls-left">
-            <button class="ctrl-btn" id="btnNewScript" title="Neues Skript laden">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                </svg>
-            </button>
+
+        <!-- New Script: absolut links gepinnt -->
+        <button class="ctrl-btn btn-edge btn-edge-left" id="btnNewScript" title="Neues Skript laden">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+        </button>
+
+        <!-- Speed Control: linkes Drittel -->
+        <div class="controls-speed-section">
+            <div class="speed-control">
+                <button class="ctrl-btn speed-btn" id="btnSpeedDown" title="Langsamer">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <span id="speedDisplay" class="speed-display">1.5</span>
+                <button class="ctrl-btn speed-btn" id="btnSpeedUp" title="Schneller">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+            </div>
         </div>
+
+        <!-- Playback: mittleres Drittel -->
         <div class="controls-center">
             <button class="ctrl-btn" id="btnScrollTop" title="Zum Anfang">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -436,15 +537,29 @@
                 </svg>
             </button>
         </div>
-        <div class="controls-right">
-            <button class="ctrl-btn" id="btnMirror" title="Spiegelung umschalten">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 3v18"/>
-                    <path d="M16 7l4 5-4 5"/>
-                    <path d="M8 7L4 12l4 5"/>
-                </svg>
-            </button>
+
+        <!-- Textgröße: rechtes Drittel -->
+        <div class="controls-fontsize-section">
+            <div class="fontsize-control">
+                <button class="ctrl-btn fontsize-btn" id="btnFontDown" title="Schrift kleiner">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <span id="fontsizeDisplay" class="fontsize-display">100%</span>
+                <button class="ctrl-btn fontsize-btn" id="btnFontUp" title="Schrift größer">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+            </div>
         </div>
+
+        <!-- Mirror: absolut rechts gepinnt -->
+        <button class="ctrl-btn btn-edge btn-edge-right" id="btnMirror" title="Spiegelung umschalten">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v18"/>
+                <path d="M16 7l4 5-4 5"/>
+                <path d="M8 7L4 12l4 5"/>
+            </svg>
+        </button>
+
     </div>
 
     <script src="/js/controller.js"></script>

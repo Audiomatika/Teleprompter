@@ -19,13 +19,15 @@
 // ---------------------------------------------------------------------------
 let isPlaying = false;
 let isMirrored = false;
-let scrollSpeed = 2;          // pixels per frame, will be updated by controller
+let scrollSpeed = 1.5;        // pixels per frame (decimal scale), will be updated by controller
 let fontSize = 56;            // in px, will be updated by controller
 let animationFrameId = null;
 let scriptLoaded = false;
 let ws = null;
 let reconnectInterval = null;
 let reconnectAttempts = 0;
+let isConnecting = false;
+let wsConnectTimeout = null;
 
 // For viewport info reporting
 let viewportReportInterval = null;
@@ -55,6 +57,12 @@ const connectionDetail  = document.getElementById('connectionDetail');
  * connectivity, then attempts the WebSocket upgrade.
  */
 async function connect() {
+    if (isConnecting) return;
+    isConnecting = true;
+
+    // Count only real connection attempts (after the guard)
+    reconnectAttempts++;
+
     // Clean up any existing WebSocket before creating a new one.
     if (ws) {
         ws.onopen = null;
@@ -71,7 +79,6 @@ async function connect() {
     const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
 
     // Update overlay with connection info
-    reconnectAttempts++;
     if (reconnectAttempts > 1) {
         connectionStatus.textContent = `Verbinde mit Server... (Versuch ${reconnectAttempts})`;
     } else {
@@ -85,6 +92,7 @@ async function connect() {
         const response = await fetch(pingUrl, { signal: AbortSignal.timeout(5000) });
         if (!response.ok) {
             connectionDetail.textContent = `HTTP-Fehler: ${response.status} — ${wsUrl}`;
+            isConnecting = false;
             scheduleReconnect();
             return;
         }
@@ -93,6 +101,7 @@ async function connect() {
         console.warn('[Teleprompter] Pre-flight ping failed:', err.message);
         connectionStatus.textContent = 'Server nicht erreichbar';
         connectionDetail.textContent = `HTTP-Verbindung zu ${window.location.host} fehlgeschlagen. Gleiches WLAN?`;
+        isConnecting = false;
         scheduleReconnect();
         return;
     }
@@ -103,16 +112,40 @@ async function connect() {
         : 'Öffne WebSocket...';
 
     try {
+        console.log('[Teleprompter] Creating WebSocket:', wsUrl);
         ws = new WebSocket(wsUrl);
     } catch (err) {
         console.error('[Teleprompter] Failed to create WebSocket:', err);
         connectionDetail.textContent = `WebSocket-Fehler: ${err.message}`;
+        isConnecting = false;
         scheduleReconnect();
         return;
     }
 
+    // iOS Safari can silently drop WS connections — force retry after 8s if no open/close
+    if (wsConnectTimeout) clearTimeout(wsConnectTimeout);
+    wsConnectTimeout = setTimeout(() => {
+        wsConnectTimeout = null;
+        if (isConnecting) {
+            console.warn('[Teleprompter] WebSocket open timeout — forcing reconnect');
+            isConnecting = false;
+            if (ws) {
+                ws.onopen = null;
+                ws.onmessage = null;
+                ws.onclose = null;
+                ws.onerror = null;
+                ws.close();
+                ws = null;
+            }
+            scheduleReconnect();
+        }
+    }, 8000);
+
+    // isConnecting stays true until open/close/error fires
     ws.addEventListener('open', () => {
         console.log('[Teleprompter] Connected to server');
+        isConnecting = false;
+        if (wsConnectTimeout) { clearTimeout(wsConnectTimeout); wsConnectTimeout = null; }
         reconnectAttempts = 0;
 
         // Hide connection overlay
@@ -120,7 +153,7 @@ async function connect() {
 
         // Clear any pending reconnect timer
         if (reconnectInterval) {
-            clearInterval(reconnectInterval);
+            clearTimeout(reconnectInterval);
             reconnectInterval = null;
         }
 
@@ -142,14 +175,19 @@ async function connect() {
 
     ws.addEventListener('close', (event) => {
         console.warn('[Teleprompter] Connection closed. Code:', event.code, 'Reason:', event.reason);
+        isConnecting = false;
+        if (wsConnectTimeout) { clearTimeout(wsConnectTimeout); wsConnectTimeout = null; }
         connectionDetail.textContent = `Verbindung geschlossen (Code: ${event.code})`;
         onDisconnect();
     });
 
-    ws.addEventListener('error', () => {
-        console.error('[Teleprompter] WebSocket error');
+    ws.addEventListener('error', (event) => {
+        console.error('[Teleprompter] WebSocket error:', event);
+        isConnecting = false;
+        if (wsConnectTimeout) { clearTimeout(wsConnectTimeout); wsConnectTimeout = null; }
         connectionStatus.textContent = 'WebSocket-Fehler';
         connectionDetail.textContent = `Verbindung zu ${wsUrl} fehlgeschlagen. Firewall prüfen!`;
+        scheduleReconnect();
     });
 }
 
@@ -179,12 +217,12 @@ function onDisconnect() {
  * Guards against duplicate intervals.
  */
 function scheduleReconnect() {
-    if (!reconnectInterval) {
-        reconnectInterval = setInterval(() => {
-            console.log('[Teleprompter] Attempting to reconnect...');
-            connect();
-        }, 3000);
-    }
+    if (reconnectInterval) return; // already scheduled
+    reconnectInterval = setTimeout(() => {
+        reconnectInterval = null;
+        console.log('[Teleprompter] Attempting to reconnect...');
+        connect().catch(() => scheduleReconnect());
+    }, 3000);
 }
 
 // ---------------------------------------------------------------------------

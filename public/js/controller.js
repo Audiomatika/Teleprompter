@@ -30,8 +30,20 @@ const SCROLL_THROTTLE_MS = 60;
 /** Reconnect timer ID */
 let reconnectInterval = null;
 
-// Scroll speed: pixels per requestAnimationFrame tick (fixed for prototype)
-const SCROLL_SPEED = 2;
+// Scroll speed: pixels per requestAnimationFrame tick
+// Dezimalskala wie professionelle Teleprompter-Software (Autocue, Parrot etc.)
+// 0.1 = sehr langsam, 1.5 = normales Sprechtempo, 3.0+ = schnell
+// Schrittweite: 0.1, Bereich: 1.0–8.0
+const SPEED_MIN = 0.1;
+const SPEED_MAX = 8.0;
+const SPEED_STEP = 0.1;
+let scrollSpeed = 1.5; // default: 1.5 (normales Sprechtempo)
+
+// Font size: Prozent-Skala
+const FONTSIZE_MIN  = 60;
+const FONTSIZE_MAX  = 200;
+const FONTSIZE_STEP = 10;
+let fontSize = 100; // default: 100%
 
 // ---------------------------------------------------------------------------
 // DOM References
@@ -51,6 +63,12 @@ const btnScrollTop    = document.getElementById('btnScrollTop');
 const btnScrollBottom = document.getElementById('btnScrollBottom');
 const btnNewScript    = document.getElementById('btnNewScript');
 const btnMirror       = document.getElementById('btnMirror');
+const btnSpeedDown    = document.getElementById('btnSpeedDown');
+const btnSpeedUp      = document.getElementById('btnSpeedUp');
+const speedDisplay    = document.getElementById('speedDisplay');
+const btnFontDown    = document.getElementById('btnFontDown');
+const btnFontUp      = document.getElementById('btnFontUp');
+const fontsizeDisplay = document.getElementById('fontsizeDisplay');
 
 // ---------------------------------------------------------------------------
 // WebSocket Connection
@@ -370,6 +388,71 @@ btnMirror.addEventListener('click', () => {
 });
 
 /**
+ * Rundet auf eine Nachkommastelle, um Floating-Point-Fehler zu vermeiden.
+ */
+function roundSpeed(val) {
+  return Math.round(val * 10) / 10;
+}
+
+/**
+ * Update scroll speed display and notify teleprompter.
+ */
+function applySpeed() {
+  speedDisplay.textContent = scrollSpeed.toFixed(1);
+  sendMessage({ type: 'control:speed', data: { speed: scrollSpeed } });
+}
+
+/**
+ * Speed Down – verringert die Scrollgeschwindigkeit um 0.1.
+ */
+btnSpeedDown.addEventListener('click', () => {
+  if (scrollSpeed > SPEED_MIN) {
+    scrollSpeed = roundSpeed(scrollSpeed - SPEED_STEP);
+    applySpeed();
+  }
+});
+
+/**
+ * Speed Up – erhöht die Scrollgeschwindigkeit um 0.1.
+ */
+btnSpeedUp.addEventListener('click', () => {
+  if (scrollSpeed < SPEED_MAX) {
+    scrollSpeed = roundSpeed(scrollSpeed + SPEED_STEP);
+    applySpeed();
+  }
+});
+
+/**
+ * Update font size display, apply to live preview, and notify teleprompter.
+ */
+function applyFontSize() {
+  fontsizeDisplay.textContent = fontSize + '%';
+  // Apply to live preview script text
+  scriptText.style.fontSize = (fontSize / 100) * 1.15 + 'rem';
+  sendMessage({ type: 'control:fontsize', data: { fontSize } });
+}
+
+/**
+ * Font Down – verringert die Schriftgröße um 10%.
+ */
+btnFontDown.addEventListener('click', () => {
+  if (fontSize > FONTSIZE_MIN) {
+    fontSize -= FONTSIZE_STEP;
+    applyFontSize();
+  }
+});
+
+/**
+ * Font Up – erhöht die Schriftgröße um 10%.
+ */
+btnFontUp.addEventListener('click', () => {
+  if (fontSize < FONTSIZE_MAX) {
+    fontSize += FONTSIZE_STEP;
+    applyFontSize();
+  }
+});
+
+/**
  * Spacebar → Play / Pause (only when script is visible).
  */
 document.addEventListener('keydown', (e) => {
@@ -419,7 +502,7 @@ function startAutoScroll() {
     const maxScroll = livePreview.scrollHeight - livePreview.clientHeight;
 
     isProgrammaticScroll = true;
-    livePreview.scrollTop += SCROLL_SPEED;
+    livePreview.scrollTop += scrollSpeed;
     requestAnimationFrame(() => { isProgrammaticScroll = false; });
 
     // Stop when we reach the bottom
