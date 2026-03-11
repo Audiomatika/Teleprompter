@@ -12,3 +12,8 @@ dependencies = [
 
 [project.scripts]
 teleprompter = "server:main"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.0",
+]

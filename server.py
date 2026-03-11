@@ -7,6 +7,10 @@ import io
 import json
 import os
 import socket
+import sys
+import threading
+import time
+import webbrowser
 from pathlib import Path
 
 import docx
@@ -19,7 +23,12 @@ from fastapi.staticfiles import StaticFiles
 # Setup
 # ---------------------------------------------------------------------------
 
-BASE_DIR = Path(__file__).resolve().parent
+# When packaged with PyInstaller, data files are extracted to sys._MEIPASS.
+# In normal Python execution, use the directory of this source file.
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    BASE_DIR = Path(sys._MEIPASS)
+else:
+    BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI()
 
@@ -332,6 +341,14 @@ def main():
 
     print("=========================================")
     print("Open the URL above on your iPad or any device on the same network.")
+
+    # Auto-open the browser after a short delay to let the server start up
+    def _open_browser() -> None:
+        """Open the default browser once the server is ready."""
+        time.sleep(1.5)
+        webbrowser.open(f"http://localhost:{PORT}")
+
+    threading.Thread(target=_open_browser, daemon=True).start()
 
     uvicorn.run(
         app,
